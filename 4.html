@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小鱼の生日</title>
+    <style>
+        /* 原有样式保持不变 */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+        }
+        canvas { 
+            display: block; 
+        }
+        #container {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #ffb6c1 0%, #ff69b4 100%);
+            overflow: hidden;
+            touch-action: none;
+        }
+        .neon-text {
+            position: absolute;
+            top: 5%;
+            width: 100%;
+            text-align: center;
+            font-family: 'Ma Shan Zheng', 'Comic Sans MS', cursive;
+            font-size: 4em;
+            color: #fff;
+            text-shadow: 0 0 10px #ff1493,
+                       0 0 20px #ff69b4,
+                       0 0 30px #ff1493;
+            animation: glow 2s ease-in-out infinite, float 3s ease-in-out infinite;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: 'Comic Sans MS', cursive;
+            font-size: 2em;
+            z-index: 200;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes glow {
+            0%, 100% { 
+                opacity: 0.8;
+                filter: drop-shadow(0 0 10px #ff1493);
+            }
+            50% { 
+                opacity: 1;
+                filter: drop-shadow(0 0 20px #ff69b4);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="container">
+        <div class="neon-text">小鱼生日快乐</div>
+        <div id="loading">加载中... 0%</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <script>
+        // 初始化场景
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true, 
+            alpha: true,
+            powerPreference: "high-performance"
+        });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // 创建星空（占位，假设已有实现）
+        const createStarField = () => {
+            const stars = new THREE.Group();
+            // 这里可以添加您的星空生成代码，当前仅为占位
+            return stars;
+        };
+        scene.add(createStarField());
+
+        // 修改后的图片加载系统
+        const initPhotoSphere = () => {
+            const photoSphere = new THREE.Group();
+            const radius = 15;
+            const imageFiles = [
+                'img_3327.jpg', 'img_3328.jpg', 'img_3332.jpg',
+                'img_3333.jpg', 'img_3336.jpg', 'img_3337.jpg',
+                'img_3340.jpg', 'img_3341.jpg', 'img_3342.jpg',
+                'img_3343.jpg', 'img_3344.jpg', 'img_3345.jpg',
+                'img_3346.jpg', 'img_3347.jpg', 'img_3348.jpg',
+                'img_3349.jpg', 'img_3350.jpg', 'img_3351.jpg',
+                'img_3352.jpg', 'img_3353.jpg', 'img_3356.jpg',
+                'img_3357.jpg', 'img_3358.jpg', 'img_3359.jpg',
+                'img_3360.jpg', 'img_3361.jpg', 'img_3364.jpg',
+            ];
+
+            const manager = new THREE.LoadingManager();
+            // 动态设置路径：本地文件协议时路径为空，服务器时使用相对路径 './'
+            const loader = new THREE.TextureLoader(manager)
+                .setPath(window.location.href.includes('file://') ? '' : './');
+
+            // 加载进度更新
+            manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+                const progress = Math.round((itemsLoaded / itemsTotal) * 100);
+                document.getElementById('loading').textContent = `加载中... ${progress}%`;
+            };
+
+            // 加载完成回调
+            manager.onLoad = () => {
+                document.getElementById('loading').style.display = 'none';
+                camera.position.set(0, 0, 25);  // 调整初始相机位置
+                animate();
+            };
+
+            // 使用改进的球面分布算法
+            const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+            
+            imageFiles.forEach((img, index) => {
+                const normalizedPath = img; // 保持原始文件名
+                console.log('正在加载图片:', normalizedPath); // 调试日志
+                loader.load(`${normalizedPath}?t=${Date.now()}`, 
+                    (texture) => {
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                        
+                        const material = new THREE.MeshPhongMaterial({
+                            map: texture,
+                            transparent: true,
+                            emissive: 0xff69b4,
+                            emissiveIntensity: 0.3,
+                            specular: 0xffffff,
+                            shininess: 100,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const geometry = new THREE.PlaneGeometry(6, 4);
+                        const photo = new THREE.Mesh(geometry, material);
+                        
+                        const theta = goldenAngle * index;
+                        const phi = Math.acos(-1 + (2 * index) / imageFiles.length);
+                        photo.position.setFromSphericalCoords(radius, phi, theta);
+                        photo.lookAt(scene.position);
+                        
+                        photo.userData = {
+                            originalScale: photo.scale.clone(),
+                            index: index
+                        };
+                        
+                        photoSphere.add(photo);
+                    },
+                    undefined,
+                    (err) => {
+                        console.error(`加载失败: ${img}`, err);
+                        alert(`图片加载失败: ${img}`); // 提示用户具体失败的图片
+                    }
+                );
+            });
+
+            scene.add(photoSphere);
+            return photoSphere;
+        };
+
+        const photoSphere = initPhotoSphere();
+
+        // 灯光配置
+        const initLights = () => {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 1.2, 200);
+            pointLight.position.set(20, 20, 20);
+            scene.add(pointLight);
+        };
+        initLights();
+
+        // 相机配置
+        camera.position.z = 25;
+
+        // 交互控制
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 10;
+        controls.maxDistance = 50;
+
+        // 动画循环
+        let animateEnabled = true;
+        const animate = () => {
+            if (!animateEnabled) return;
+            requestAnimationFrame(animate);
+            controls.update();
+            photoSphere.rotation.y += 0.001;
+            renderer.render(scene, camera);
+        };
+
+        // 响应式调整
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 点击交互
+        const initInteraction = () => {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            const handleClick = (event) => {
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(photoSphere.children);
+                
+                if (intersects.length > 0) {
+                    const photo = intersects[0].object;
+                    gsap.to(photo.scale, {
+                        duration: 0.5,
+                        x: 1.5,
+                        y: 1.5,
+                        z: 1.5,
+                        ease: "power2.out",
+                        onComplete: () => {
+                            gsap.to(photo.scale, {
+                                duration: 0.8,
+                                x: 1,
+                                y: 1,
+                                z: 1,
+                                ease: "bounce.out"
+                            });
+                        }
+                    });
+                }
+            };
+
+            renderer.domElement.addEventListener('click', handleClick);
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleClick(e.touches[0]);
+            });
+        };
+        initInteraction();
+    </script>
+</body>
+</html>
